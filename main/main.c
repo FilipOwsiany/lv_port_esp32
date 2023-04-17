@@ -98,7 +98,7 @@ typedef struct {
 static prepare_type_env_t prepare_write_env;
 
 #define CONFIG_SET_RAW_ADV_DATA
-#ifdef CONFIG_SET_RAW_ADV_DATA
+
 static uint8_t raw_adv_data[] = {
         /* flags */
         0x02, 0x01, 0x06,
@@ -117,48 +117,6 @@ static uint8_t raw_scan_rsp_data[] = {
         /* service uuid */
         0x03, 0x03, 0xFF,0x00
 };
-
-#else
-static uint8_t service_uuid[16] = {
-    /* LSB <--------------------------------------------------------------------------------> MSB */
-    //first uuid, 16bit, [12],[13] is the value
-    0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00,
-};
-
-/* The length of adv data must be less than 31 bytes */
-static esp_ble_adv_data_t adv_data = {
-    .set_scan_rsp        = false,
-    .include_name        = true,
-    .include_txpower     = true,
-    .min_interval        = 0x0006, //slave connection min interval, Time = min_interval * 1.25 msec
-    .max_interval        = 0x0010, //slave connection max interval, Time = max_interval * 1.25 msec
-    .appearance          = 0x00,
-    .manufacturer_len    = 0,    //TEST_MANUFACTURER_DATA_LEN,
-    .p_manufacturer_data = NULL, //test_manufacturer,
-    .service_data_len    = 0,
-    .p_service_data      = NULL,
-    .service_uuid_len    = sizeof(service_uuid),
-    .p_service_uuid      = service_uuid,
-    .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
-};
-
-// scan response data
-static esp_ble_adv_data_t scan_rsp_data = {
-    .set_scan_rsp        = true,
-    .include_name        = true,
-    .include_txpower     = true,
-    .min_interval        = 0x0006,
-    .max_interval        = 0x0010,
-    .appearance          = 0x00,
-    .manufacturer_len    = 0, //TEST_MANUFACTURER_DATA_LEN,
-    .p_manufacturer_data = NULL, //&test_manufacturer[0],
-    .service_data_len    = 0,
-    .p_service_data      = NULL,
-    .service_uuid_len    = sizeof(service_uuid),
-    .p_service_uuid      = service_uuid,
-    .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
-};
-#endif /* CONFIG_SET_RAW_ADV_DATA */
 
 static esp_ble_adv_params_t adv_params = {
     .adv_int_min         = 0x20,
@@ -261,7 +219,6 @@ static const esp_gatts_attr_db_t gatt_db[HRS_IDX_NB] =
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event) {
-    #ifdef CONFIG_SET_RAW_ADV_DATA
         case ESP_GAP_BLE_ADV_DATA_RAW_SET_COMPLETE_EVT:
             adv_config_done &= (~ADV_CONFIG_FLAG);
             if (adv_config_done == 0){
@@ -274,20 +231,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
                 esp_ble_gap_start_advertising(&adv_params);
             }
             break;
-    #else
-        case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
-            adv_config_done &= (~ADV_CONFIG_FLAG);
-            if (adv_config_done == 0){
-                esp_ble_gap_start_advertising(&adv_params);
-            }
-            break;
-        case ESP_GAP_BLE_SCAN_RSP_DATA_SET_COMPLETE_EVT:
-            adv_config_done &= (~SCAN_RSP_CONFIG_FLAG);
-            if (adv_config_done == 0){
-                esp_ble_gap_start_advertising(&adv_params);
-            }
-            break;
-    #endif
+
         case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
             /* advertising start complete event to indicate advertising start successfully or failed */
             if (param->adv_start_cmpl.status != ESP_BT_STATUS_SUCCESS) {
@@ -385,7 +329,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             if (set_dev_name_ret){
                 ESP_LOGE(GATTS_TABLE_TAG, "set device name failed, error code = %x", set_dev_name_ret);
             }
-    #ifdef CONFIG_SET_RAW_ADV_DATA
             esp_err_t raw_adv_ret = esp_ble_gap_config_adv_data_raw(raw_adv_data, sizeof(raw_adv_data));
             if (raw_adv_ret){
                 ESP_LOGE(GATTS_TABLE_TAG, "config raw adv data failed, error code = %x ", raw_adv_ret);
@@ -396,20 +339,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 ESP_LOGE(GATTS_TABLE_TAG, "config raw scan rsp data failed, error code = %x", raw_scan_ret);
             }
             adv_config_done |= SCAN_RSP_CONFIG_FLAG;
-    #else
-            //config adv data
-            esp_err_t ret = esp_ble_gap_config_adv_data(&adv_data);
-            if (ret){
-                ESP_LOGE(GATTS_TABLE_TAG, "config adv data failed, error code = %x", ret);
-            }
-            adv_config_done |= ADV_CONFIG_FLAG;
-            //config scan response data
-            ret = esp_ble_gap_config_adv_data(&scan_rsp_data);
-            if (ret){
-                ESP_LOGE(GATTS_TABLE_TAG, "config scan response data failed, error code = %x", ret);
-            }
-            adv_config_done |= SCAN_RSP_CONFIG_FLAG;
-    #endif
             esp_err_t create_attr_ret = esp_ble_gatts_create_attr_tab(gatt_db, gatts_if, HRS_IDX_NB, SVC_INST_ID);
             if (create_attr_ret){
                 ESP_LOGE(GATTS_TABLE_TAG, "create attr table failed, error code = %x", create_attr_ret);
@@ -522,7 +451,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             break;
     }
 }
-
 
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
@@ -747,64 +675,32 @@ static void guiTask(void *pvParameter) {
 }
 static void create_demo_application(void)
 {
-    /* When using a monochrome display we only show "Hello World" centered on the
-     * screen */
-#if defined CONFIG_LV_TFT_DISPLAY_MONOCHROME || \
-    defined CONFIG_LV_TFT_DISPLAY_CONTROLLER_ST7735S
+    //lv_demo_widgets();
 
-    /* use a pretty small demo for monochrome displays */
-    /* Get the current screen  */
-    lv_obj_t * scr = lv_disp_get_scr_act(NULL);
+    // lv_obj_t * label1 = lv_label_create(lv_scr_act(), NULL);
+    // lv_label_set_long_mode(label1, LV_LABEL_LONG_BREAK);     /*Break the long lines*/
+    // lv_label_set_recolor(label1, true);                      /*Enable re-coloring by commands in the text*/
+    // lv_label_set_align(label1, LV_LABEL_ALIGN_CENTER);       /*Center aligned lines*/
+    // lv_label_set_text(label1, "#0000ff Re-color# #ff00ff words# #ff0000 of a# label "
+    //                           "and  wrap long text automatically.");
+    // lv_obj_set_width(label1, 150);
+    // lv_obj_align(label1, NULL, LV_ALIGN_CENTER, 0, -30);
 
-    /*Create a Label on the currently active screen*/
-    lv_obj_t * label1 =  lv_label_create(scr, NULL);
+    // lv_obj_t * label2 = lv_label_create(lv_scr_act(), NULL);
+    // lv_label_set_long_mode(label2, LV_LABEL_LONG_SROLL_CIRC);     /*Circular scroll*/
+    // lv_obj_set_width(label2, 150);
+    // lv_label_set_text(label2, "It is a circularly scrolling text. ");
+    // lv_obj_align(label2, NULL, LV_ALIGN_CENTER, 0, 30);
 
-    /*Modify the Label's text*/
-    lv_label_set_text(label1, "Hello\nworld");
+    lv_obj_t * btn = lv_btn_create(lv_scr_act(), NULL);
+    lv_obj_set_size(btn, 100, 50);
+    lv_obj_align(btn, NULL, LV_ALIGN_CENTER, 0, -30);
+    lv_obj_set_event_cb(btn, btn_event_cb);
 
-    /* Align the Label to the center
-     * NULL means align on parent (which is the screen now)
-     * 0, 0 at the end means an x, y offset after alignment*/
-    lv_obj_align(label1, NULL, LV_ALIGN_CENTER, 0, 0);
-#else
-    /* Otherwise we show the selected demo */
-    #if defined CONFIG_LV_USE_DEMO_WIDGETS
-        //lv_demo_widgets();
+    lv_obj_t * label = lv_label_create(btn, NULL);
+    lv_label_set_text(label, "Click me!");
+    lv_obj_align(label, NULL, LV_ALIGN_CENTER, 0, -30);
 
-        // lv_obj_t * label1 = lv_label_create(lv_scr_act(), NULL);
-        // lv_label_set_long_mode(label1, LV_LABEL_LONG_BREAK);     /*Break the long lines*/
-        // lv_label_set_recolor(label1, true);                      /*Enable re-coloring by commands in the text*/
-        // lv_label_set_align(label1, LV_LABEL_ALIGN_CENTER);       /*Center aligned lines*/
-        // lv_label_set_text(label1, "#0000ff Re-color# #ff00ff words# #ff0000 of a# label "
-        //                           "and  wrap long text automatically.");
-        // lv_obj_set_width(label1, 150);
-        // lv_obj_align(label1, NULL, LV_ALIGN_CENTER, 0, -30);
-
-        // lv_obj_t * label2 = lv_label_create(lv_scr_act(), NULL);
-        // lv_label_set_long_mode(label2, LV_LABEL_LONG_SROLL_CIRC);     /*Circular scroll*/
-        // lv_obj_set_width(label2, 150);
-        // lv_label_set_text(label2, "It is a circularly scrolling text. ");
-        // lv_obj_align(label2, NULL, LV_ALIGN_CENTER, 0, 30);
-
-        lv_obj_t * btn = lv_btn_create(lv_scr_act(), NULL);
-        lv_obj_set_size(btn, 100, 50);
-        lv_obj_align(btn, NULL, LV_ALIGN_CENTER, 0, -30);
-        lv_obj_set_event_cb(btn, btn_event_cb);
-
-        lv_obj_t * label = lv_label_create(btn, NULL);
-        lv_label_set_text(label, "Click me!");
-        lv_obj_align(label, NULL, LV_ALIGN_CENTER, 0, -30);
-
-    #elif defined CONFIG_LV_USE_DEMO_KEYPAD_AND_ENCODER
-        //lv_demo_keypad_encoder();
-    #elif defined CONFIG_LV_USE_DEMO_BENCHMARK
-        //lv_demo_benchmark();
-    #elif defined CONFIG_LV_USE_DEMO_STRESS
-        //lv_demo_stress();
-    #else
-        #error "No demo application selected."
-    #endif
-#endif
 }
 
 static void lv_tick_task(void *arg) {
