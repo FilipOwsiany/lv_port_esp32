@@ -52,6 +52,14 @@
 
 uint8_t data_to_send = 0x00;
 
+static lv_obj_t * chart;
+static lv_chart_series_t * ser1;
+
+static lv_obj_t * scr1; 
+static lv_obj_t * scr2; 
+
+LV_IMG_DECLARE(AGHimage);
+
 /**********************
  *  STATIC PROTOTYPES
  **********************/
@@ -69,6 +77,20 @@ static void btn_event_cb(lv_obj_t * btn, lv_event_t event)
         /*Get the first child of the button which is the label and change its text*/
         lv_obj_t * label = lv_obj_get_child(btn, 0);
         lv_label_set_text_fmt(label, "Button: %d", cnt);
+    }
+}
+
+static void next_windows_btn_event_cb(lv_obj_t * btn, lv_event_t event)
+{
+    if(event == LV_EVENT_CLICKED) {
+        lv_scr_load(scr2);
+    }
+}
+
+static void next_windows_btn1_event_cb(lv_obj_t * btn, lv_event_t event)
+{
+    if(event == LV_EVENT_CLICKED) {
+        lv_scr_load(scr1);
     }
 }
 
@@ -180,30 +202,78 @@ static void guiTask(void *pvParameter) {
 static void create_demo_application(void)
 {
     //lv_demo_widgets();
+    scr1 = lv_scr_act();
 
-    // lv_obj_t * label1 = lv_label_create(lv_scr_act(), NULL);
-    // lv_label_set_long_mode(label1, LV_LABEL_LONG_BREAK);     /*Break the long lines*/
-    // lv_label_set_recolor(label1, true);                      /*Enable re-coloring by commands in the text*/
-    // lv_label_set_align(label1, LV_LABEL_ALIGN_CENTER);       /*Center aligned lines*/
-    // lv_label_set_text(label1, "#0000ff Re-color# #ff00ff words# #ff0000 of a# label "
-    //                           "and  wrap long text automatically.");
-    // lv_obj_set_width(label1, 150);
-    // lv_obj_align(label1, NULL, LV_ALIGN_CENTER, 0, -30);
+    lv_obj_set_style_local_bg_color(scr1, LV_OBJ_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+	lv_obj_set_style_local_bg_opa(scr1, LV_OBJ_PART_MAIN, LV_STATE_DEFAULT, LV_OPA_COVER);  
 
-    // lv_obj_t * label2 = lv_label_create(lv_scr_act(), NULL);
-    // lv_label_set_long_mode(label2, LV_LABEL_LONG_SROLL_CIRC);     /*Circular scroll*/
-    // lv_obj_set_width(label2, 150);
-    // lv_label_set_text(label2, "It is a circularly scrolling text. ");
-    // lv_obj_align(label2, NULL, LV_ALIGN_CENTER, 0, 30);
-
-    lv_obj_t * btn = lv_btn_create(lv_scr_act(), NULL);
-    lv_obj_set_size(btn, 100, 50);
-    lv_obj_align(btn, NULL, LV_ALIGN_CENTER, 0, -30);
+    lv_obj_t * btn = lv_btn_create(scr1, NULL);
+    lv_obj_set_size(btn, 120, 70);
+    lv_obj_set_style_local_bg_color(btn, LV_OBJ_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_MAGENTA);
+    lv_obj_align(btn, NULL, LV_ALIGN_IN_TOP_MID, 0, 5);
     lv_obj_set_event_cb(btn, btn_event_cb);
 
     lv_obj_t * label = lv_label_create(btn, NULL);
     lv_label_set_text(label, "Click me!");
-    lv_obj_align(label, NULL, LV_ALIGN_CENTER, 0, -30);
+    lv_obj_align(label, NULL, LV_ALIGN_IN_TOP_MID, 0, 5);
+
+
+    lv_obj_t * next_windows_btn = lv_btn_create(scr1, NULL);
+    lv_obj_set_size(next_windows_btn, 80, 50);
+    lv_obj_set_style_local_bg_color(next_windows_btn, LV_OBJ_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_MAGENTA);
+    lv_obj_align(next_windows_btn, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -30);
+    lv_obj_set_event_cb(next_windows_btn, next_windows_btn_event_cb);
+
+    lv_obj_t * next_windows_label = lv_label_create(next_windows_btn, NULL);
+    lv_label_set_text(next_windows_label, "NEXT");
+    lv_obj_align(next_windows_label, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -30);
+
+
+
+    /*Create a chart*/
+    chart = lv_chart_create(scr1, NULL);
+    lv_obj_set_size(chart, 200, 130);
+    lv_obj_align(chart, NULL, LV_ALIGN_CENTER, 0, 0);
+    lv_chart_set_type(chart, LV_CHART_TYPE_LINE);   /*Show lines and points too*/
+    lv_chart_set_range(chart, 0, 100);
+    lv_chart_set_point_count(chart, 100);    
+    /*Add two data series*/
+    ser1 = lv_chart_add_series(chart, LV_COLOR_RED);
+
+
+    /*Set the next points on 'ser1'*/
+    lv_chart_set_next(chart, ser1, 0);
+    lv_chart_set_next(chart, ser1, 0);
+    lv_chart_set_next(chart, ser1, 0);
+    lv_chart_set_next(chart, ser1, 0);
+    lv_chart_set_next(chart, ser1, 0);
+    lv_chart_set_next(chart, ser1, 0);
+    lv_chart_set_next(chart, ser1, 0);
+    lv_chart_set_next(chart, ser1, 0);
+    lv_chart_set_next(chart, ser1, 0);
+    lv_chart_set_next(chart, ser1, 0);
+    lv_chart_set_next(chart, ser1, 0);
+
+    lv_chart_refresh(chart); /*Required after direct set*/
+
+
+    scr2 = lv_obj_create(NULL, NULL);
+    lv_obj_set_style_local_bg_color(scr2, LV_OBJ_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_RED);
+	lv_obj_set_style_local_bg_opa(scr2, LV_OBJ_PART_MAIN, LV_STATE_DEFAULT, LV_OPA_COVER); 
+
+    lv_obj_t * next_windows_btn1 = lv_btn_create(scr2, NULL);
+    lv_obj_set_size(next_windows_btn1, 80, 50);
+    lv_obj_set_style_local_bg_color(next_windows_btn1, LV_OBJ_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_MAGENTA);
+    lv_obj_align(next_windows_btn1, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -30);
+    lv_obj_set_event_cb(next_windows_btn1, next_windows_btn1_event_cb);
+
+    lv_obj_t * next_windows_label1 = lv_label_create(next_windows_btn1, NULL);
+    lv_label_set_text(next_windows_label1, "NEXT");
+    lv_obj_align(next_windows_label1, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -30);
+
+    lv_obj_t * img = lv_img_create(scr2, NULL);
+    lv_img_set_src(img, &AGHimage);
+    lv_obj_align(img, NULL, LV_ALIGN_CENTER, 0, -20);
 
 }
 
@@ -215,4 +285,9 @@ static void lv_tick_task(void *arg) {
 
 uint8_t lvgl_displayGetData(void){
     return data_to_send;
+}
+
+void lvgl_next_data_in_chart(void){
+    lv_chart_set_next(chart, ser1, 69);
+    // lv_chart_refresh(chart);
 }

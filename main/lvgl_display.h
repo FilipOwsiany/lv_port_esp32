@@ -6,3 +6,4 @@
 
 void lvgl_displayInit(void);
 uint8_t lvgl_displayGetData(void);
+void lvgl_next_data_in_chart(void);
